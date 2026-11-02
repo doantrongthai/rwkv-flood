@@ -34,6 +34,12 @@ def get_model(model_name, num_classes=1, seed=None, input_size=256, pretrained=N
         'v-rwkv': 'vrwkv',
         'segrwkv': 'seg_rwkv',
         'seg-rwkv': 'seg_rwkv',
+        'rsrwkv': 'rsrwkv',
+        'rs-rwkv': 'rsrwkv',
+        'rs_rwkv': 'rsrwkv',
+        'scrwkv': 'scrwkv',
+        'sc-rwkv': 'scrwkv',
+        'sc_rwkv': 'scrwkv',
     }
     canonical_name = alias_map.get(model_name.lower(), model_name.lower())
 

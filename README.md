@@ -14,6 +14,8 @@ All RWKV architectures in this repository are faithfully ported from their origi
 
 | Model | Original Publication | Source Repository | Commit Hash | Key Architectural Focus |
 | :--- | :--- | :--- | :--- | :--- |
+| **RSRWKV** | Li et al. (*IEEE TGRS*, 2025; *arXiv:2503.20382*) | [Ling-yunchi/RSRWKV](https://github.com/Ling-yunchi/RSRWKV) | `ede06a56bc3768e93444f814025fbc29d2e7919e` | Remote Sensing Water Segmentation (GLH-Water: 85.06% IoU), MVCShift multi-scale dilated shift, ECA attention |
+| **SCRWKV** | Zhang et al. (*ICML*, 2026; *arXiv:2605.14926*) | [zhxhzy/SCRWKV](https://github.com/zhxhzy/SCRWKV) | `f3a1063f6043c769ef828c2ae95edf1029d76c40` | Ultra-compact (1.22M params), Structure-Field Encoder (SFE) with AMCM multi-kernel convs, CSHF harmonic fusion decoder |
 | **U-RWKV** | Ye et al. (*arXiv:2507.11415*, 2025) | [hbyecoding/U-RWKV](https://github.com/hbyecoding/U-RWKV) | `32f2d3c8bd52ef53b34cabcc8f879c1d39f183e0` | Direction-Adaptive RWKV Module (DARM), 2D spatial q-shift, SASE blocks |
 | **VRWKV** | Duan et al. (*ICLR 2025 Spotlight*; *arXiv:2403.02308*) | [OpenGVLab/Vision-RWKV](https://github.com/OpenGVLab/Vision-RWKV) | `0e0e38a6fd4475ae3817e14420ab85fab08d9097` | Vision-RWKV backbone, 2D bi-directional WKV attention, squared-ReLU FFN |
 | **SegRWKV** | *JCDE*, 2024 | [luminescentfrr/SegRWKV](https://github.com/luminescentfrr/SegRWKV) | `8dbd13217c4fb734a03ffdb020833e6e83152c53` | RWKV attention blocks at bottleneck and deep stages, residual skip connections |
@@ -43,6 +45,12 @@ pip install -r requirements.txt
 ### 1. Training an RWKV Model
 Train `u_rwkv` (or any other architecture) on flood segmentation at $256 \times 256$:
 ```bash
+# Train RSRWKV (Remote Sensing Water Segmentation)
+python main.py --model rsrwkv --dataset floodkaggle --size 256 --batch_size 4 --epochs 50
+
+# Train SCRWKV (Ultra-compact 1.22M Structure-Aware)
+python main.py --model scrwkv --dataset floodkaggle --size 256 --batch_size 4 --epochs 50
+
 # Train U-RWKV
 python main.py --model u_rwkv --dataset floodkaggle --size 256 --batch_size 4 --epochs 50
 
