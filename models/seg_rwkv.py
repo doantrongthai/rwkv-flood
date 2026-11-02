@@ -186,3 +186,4 @@ def build_model(num_classes: int = 1, input_size: int = 256, pretrained: bool = 
         channels=(24, 48, 96, 192),
         input_size=input_size
     )
+

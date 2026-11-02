@@ -104,3 +104,4 @@ def q_shift_2d(x: torch.Tensor, shift_pixel: int = 1, gamma: float = 0.25, resol
     out[:, 4 * q:, ...] = x_2d[:, 4 * q:, ...]
 
     return out.flatten(2).transpose(1, 2)
+

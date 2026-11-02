@@ -75,3 +75,4 @@ def get_model(model_name, num_classes=1, seed=None, input_size=256, pretrained=N
         print(f"[OK] Model '{canonical_name}' initialized with seed {seed} (pretrained={pretrained})")
 
     return model
+

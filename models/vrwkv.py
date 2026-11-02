@@ -192,3 +192,4 @@ def build_model(num_classes: int = 1, input_size: int = 256, pretrained: bool = 
         patch_size=4,
         input_size=input_size
     )
+
