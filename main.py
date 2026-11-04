@@ -174,13 +174,15 @@ def main():
     print(f"Epochs: {args.epochs} | Batch Size: {args.batch_size} | LR: {args.lr} | Seed: {args.seed}")
     print("=" * 70)
 
-    train_segmentation(
+    res = train_segmentation(
         model_name=args.model, loss_name=args.loss, size=args.size,
         epochs=args.epochs, batch_size=args.batch_size, lr=args.lr,
         dataset=args.dataset, output_path=args.output_path,
         seed=args.seed, num_classes=args.num_classes, dataset_type=args.dataset,
         aux_loss_name=args.aux_loss, aux_weight=args.aux_weight, pretrained=args.pretrained
     )
+    if isinstance(res, dict) and res.get("status") == "FAILED_NAN":
+        print(f"\n[SUMMARY] Model '{args.model}' terminated early due to NaN detection. Status: FAILED_NAN")
 
 
 if __name__ == '__main__':

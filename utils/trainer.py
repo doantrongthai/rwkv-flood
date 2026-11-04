@@ -223,7 +223,12 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
             else:
                 loss = criterion(outputs, masks)
 
+            if torch.isnan(loss) or torch.isinf(loss):
+                print(f"\n[ALERT] NaN / Inf loss ({loss.item()}) at Epoch {epoch+1}, batch {batch_idx}! SKIPPING MODEL '{model_name}'...")
+                return {"status": "FAILED_NAN", "model": model_name, "epoch": epoch+1}
+
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
             train_loss += loss.item()
@@ -246,9 +251,16 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
                     outputs = outputs[0]
 
                 loss = criterion(outputs, masks)
+                if torch.isnan(loss) or torch.isinf(loss):
+                    print(f"\n[ALERT] NaN / Inf loss in validation at Epoch {epoch+1}! SKIPPING MODEL '{model_name}'...")
+                    return {"status": "FAILED_NAN", "model": model_name, "epoch": epoch+1}
                 val_loss += loss.item()
 
         avg_val_loss = val_loss / len(val_loader)
+        import math
+        if math.isnan(avg_val_loss) or math.isnan(avg_train_loss):
+            print(f"\n[ALERT] NaN average loss at Epoch {epoch+1}! SKIPPING MODEL '{model_name}'...")
+            return {"status": "FAILED_NAN", "model": model_name, "epoch": epoch+1}
 
         print(f"Epoch {epoch+1:3d}/{epochs} | "
               f"Train: {avg_train_loss:.6f} | "
@@ -295,6 +307,9 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
     print("TESTING & EVALUATION")
     print(f"{'='*70}")
 
+    if not os.path.exists(save_path):
+        print(f"\n[SKIP] No checkpoint was saved for '{model_name}'. Skipping testing.")
+        return {"status": "FAILED_NAN", "model": model_name}
     checkpoint = torch.load(save_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
