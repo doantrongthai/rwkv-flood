@@ -333,3 +333,4 @@ class HydroRWKV(nn.Module):
         d2 = self.up2(d3, x2)
         d1 = self.up1(d2, x1)
         return self.head(d1)
+
