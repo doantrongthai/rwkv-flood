@@ -63,7 +63,7 @@ class VRWKV_SpatialMix(nn.Module):
         xv = x * self.spatial_mix_v + xx * (1 - self.spatial_mix_v)
         xr = x * self.spatial_mix_r + xx * (1 - self.spatial_mix_r)
 
-        k = self.key(xk)
+        k = torch.clamp(self.key(xk), -15.0, 15.0)
         v = self.value(xv)
         r = self.receptance(xr)
         sr = torch.sigmoid(r)
@@ -97,8 +97,8 @@ class VRWKV_ChannelMix(nn.Module):
         xk = x * self.spatial_mix_k + xx * (1 - self.spatial_mix_k)
         xr = x * self.spatial_mix_r + xx * (1 - self.spatial_mix_r)
 
-        k = self.key(xk)
-        k = torch.square(torch.relu(k))
+        k = torch.clamp(torch.relu(self.key(xk)), 0.0, 10.0)
+        k = torch.square(k)
         kv = self.value(k)
         r = torch.sigmoid(self.receptance(xr))
         return r * kv

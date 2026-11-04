@@ -86,7 +86,7 @@ __global__ void kernel_forward(const int B, const int T, const int C,
         F e1 = exp(o1 - no);
         F e2 = exp(o2 - no);
         F e3 = exp(u + k[ii] - no);
-        y[ii] = (c * e1 + a * e2 + e3 * v[ii])/(d * e1 + b * e2 + e3);
+        y[ii] = (c * e1 + a * e2 + e3 * v[ii])/(d * e1 + b * e2 + e3 + 1e-7f);
         // update a, b, c, d
         const int ii2 = ((i + 1) % T) * C;
         no = max(o2 - w, k[ii]);
@@ -216,7 +216,7 @@ __global__ void kernel_backward(const int B, const int T, const int C,
         F e2 = exp(o2 - no);
         F e3 = exp(u + k[ii] - no);
         F num = (c * e1 + a * e2 + e3 * v[ii]);
-        F iden = 1 / (d * e1 + b * e2 + e3);
+        F iden = 1.0f / (d * e1 + b * e2 + e3 + 1e-7f);
         y[i - _t] = num * iden;
         z[i - _t] = iden;
         zexp[i - _t] = -no;

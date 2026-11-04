@@ -106,7 +106,7 @@ class SCIU_Block(nn.Module):
         x_seq = x_struct.permute(0, 2, 3, 1).reshape(B, H * W, C)
         x_shifted = q_shift_2d(x_seq, shift_pixel=1, gamma=0.25, resolution=(H, W))
 
-        k = self.key(x_shifted)
+        k = torch.clamp(self.key(x_shifted), -15.0, 15.0)
         v = self.value(x_shifted)
         r = torch.sigmoid(self.receptance(x_shifted))
 
@@ -117,7 +117,8 @@ class SCIU_Block(nn.Module):
         # 3. Gated Channel Mix
         h_norm = self.ln2(h)
         ffn_r = torch.sigmoid(self.ffn_receptance(h_norm))
-        ffn_k = torch.square(torch.relu(self.ffn_key(h_norm)))
+        ffn_k = torch.clamp(torch.relu(self.ffn_key(h_norm)), 0.0, 10.0)
+        ffn_k = torch.square(ffn_k)
         ffn_out = ffn_r * self.ffn_value(ffn_k)
 
         return h + ffn_out

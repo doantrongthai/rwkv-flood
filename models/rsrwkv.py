@@ -128,7 +128,7 @@ class RSRWKV_SpatialMix(nn.Module):
 
         # Step 2: Linear projections
         x_seq = x_shifted.permute(0, 2, 3, 1).reshape(B, H * W, C)
-        k = self.key(x_seq)
+        k = torch.clamp(self.key(x_seq), -15.0, 15.0)
         v = self.value(x_seq)
         r = torch.sigmoid(self.receptance(x_seq))
 
@@ -155,7 +155,8 @@ class RSRWKV_ChannelMix(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         r = torch.sigmoid(self.receptance(x))
-        k = torch.square(torch.relu(self.key(x)))
+        k = torch.clamp(torch.relu(self.key(x)), 0.0, 10.0)
+        k = torch.square(k)
         out = r * self.value(k)
         return out
 

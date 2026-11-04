@@ -36,7 +36,7 @@ def _lovasz_grad(gt_sorted: torch.Tensor) -> torch.Tensor:
     gts = gt_sorted.sum()
     intersection = gts - gt_sorted.float().cumsum(0)
     union        = gts + (1 - gt_sorted).float().cumsum(0)
-    jaccard      = 1.0 - intersection / union          # (N,)
+    jaccard      = 1.0 - intersection / (union + 1e-7)          # (N,)
     if p > 1:
         jaccard[1:] = jaccard[1:] - jaccard[:-1]       # discrete derivative
     return jaccard

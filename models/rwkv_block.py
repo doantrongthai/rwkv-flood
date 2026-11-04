@@ -130,9 +130,9 @@ def wkv_pure_pytorch(w: torch.Tensor, u: torch.Tensor, k: torch.Tensor, v: torch
         y: Output tensor of shape (B, T, C)
     """
     B, T, C = k.shape
-    w_decay = -torch.exp(w.float())
-    u_val = u.float()
-    k_val = k.float()
+    w_decay = -torch.exp(torch.clamp(w.float(), -8.0, 3.0))
+    u_val = torch.clamp(u.float(), -10.0, 10.0)
+    k_val = torch.clamp(k.float(), -15.0, 15.0)
     v_val = v.float()
 
     y = torch.zeros(B, T, C, device=k.device, dtype=k.dtype)
@@ -149,7 +149,8 @@ def wkv_pure_pytorch(w: torch.Tensor, u: torch.Tensor, k: torch.Tensor, v: torch
         p_out = torch.maximum(p, ww)
         e1 = torch.exp(p - p_out)
         e2 = torch.exp(ww - p_out)
-        y[:, t, :] = ((e1 * a + e2 * vt) / (e1 * b + e2 + 1e-8)).to(k.dtype)
+        denom = e1 * b + e2 + 1e-7
+        y[:, t, :] = ((e1 * a + e2 * vt) / denom).to(k.dtype)
 
         # State transition for t + 1
         ww_state = p + w_decay
@@ -181,8 +182,13 @@ def bi_wkv(w: torch.Tensor, u: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -
     Bi-directional WKV operator for 2D visual tasks.
     Combines forward and backward sequential scans.
     Uses official hardware CUDA kernel if available on GPU, otherwise falls back to pure PyTorch.
+    Strictly safeguards inputs with numerical bounds to prevent gradient explosions.
     """
     B, T, C = k.shape
+    k = torch.clamp(k, -15.0, 15.0)
+    w = torch.clamp(w, -8.0, 3.0)
+    u = torch.clamp(u, -10.0, 10.0)
+
     if CUDA_WKV_AVAILABLE and k.is_cuda and T <= T_MAX and (B * C % min(C, 1024) == 0):
         try:
             y_fwd = WKVFunction.apply(B, T, C, w, u, k, v)
@@ -190,7 +196,9 @@ def bi_wkv(w: torch.Tensor, u: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -
             v_rev = torch.flip(v, dims=[1])
             y_bwd = WKVFunction.apply(B, T, C, w, u, k_rev, v_rev)
             y_bwd = torch.flip(y_bwd, dims=[1])
-            return 0.5 * (y_fwd + y_bwd)
+            out = 0.5 * (y_fwd + y_bwd)
+            if not (torch.isnan(out).any() or torch.isinf(out).any()):
+                return out
         except Exception:
             pass
     return _bi_wkv_pure_pytorch_impl(w, u, k, v)

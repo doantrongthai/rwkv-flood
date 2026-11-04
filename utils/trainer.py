@@ -78,7 +78,8 @@ def set_seed(seed):
 
 def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
                        dataset, output_path, seed, num_classes=1, dataset_type='floodvn',
-                       aux_loss_name='boundary', aux_weight=0.4, pretrained=False):
+                       aux_loss_name='boundary', aux_weight=0.4, pretrained=False,
+                       progress=True):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: {device}")
@@ -202,10 +203,9 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
         model.train()
         train_loss = 0.0
 
-        pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Train]",
-                    leave=False, ncols=100)
+        loader = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Train]", leave=False, ncols=100) if progress else train_loader
 
-        for batch_idx, (images, masks) in enumerate(pbar):
+        for batch_idx, (images, masks) in enumerate(loader):
             images = images.to(device, non_blocking=False)
             masks = masks.to(device, non_blocking=False)
 
@@ -228,20 +228,32 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
                 return {"status": "FAILED_NAN", "model": model_name, "epoch": epoch+1}
 
             loss.backward()
+
+            # NaN gradient shield
+            nan_grad = False
+            for p in model.parameters():
+                if p.grad is not None and (torch.isnan(p.grad).any() or torch.isinf(p.grad).any()):
+                    nan_grad = True
+                    break
+            if nan_grad:
+                print(f"\n[ALERT] NaN / Inf gradient detected at Epoch {epoch+1}, batch {batch_idx}! SKIPPING MODEL '{model_name}'...")
+                return {"status": "FAILED_NAN", "model": model_name, "epoch": epoch+1}
+
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
             train_loss += loss.item()
-            pbar.set_postfix({'loss': f'{loss.item():.4f}'})
+            if progress and hasattr(loader, 'set_postfix'):
+                loader.set_postfix({'loss': f'{loss.item():.4f}'})
 
         avg_train_loss = train_loss / len(train_loader)
 
         model.eval()
         val_loss = 0.0
+        v_loader = tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} [Val]", leave=False, ncols=100) if progress else val_loader
 
         with torch.no_grad():
-            for images, masks in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} [Val]",
-                                      leave=False, ncols=100):
+            for images, masks in v_loader:
                 images = images.to(device, non_blocking=False)
                 masks = masks.to(device, non_blocking=False)
 
@@ -262,11 +274,9 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
             print(f"\n[ALERT] NaN average loss at Epoch {epoch+1}! SKIPPING MODEL '{model_name}'...")
             return {"status": "FAILED_NAN", "model": model_name, "epoch": epoch+1}
 
-        print(f"Epoch {epoch+1:3d}/{epochs} | "
-              f"Train: {avg_train_loss:.6f} | "
-              f"Val: {avg_val_loss:.6f}", end='')
+        is_best = (avg_val_loss < best_val_loss)
         scheduler.step()
-        if avg_val_loss < best_val_loss:
+        if is_best:
             best_val_loss = avg_val_loss
 
             checkpoint = {
@@ -299,9 +309,11 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
             }
 
             torch.save(checkpoint, save_path, _use_new_zipfile_serialization=True)
-            print(" [OK] Best")
-        else:
-            print()
+
+        status_str = f"Epoch {epoch+1:3d}/{epochs} | Train: {avg_train_loss:.6f} | Val: {avg_val_loss:.6f}"
+        if is_best:
+            status_str += " [OK] Best"
+        print(status_str)
 
     print(f"\n{'='*70}")
     print("TESTING & EVALUATION")
@@ -318,8 +330,9 @@ def train_segmentation(model_name, loss_name, size, epochs, batch_size, lr,
     all_preds = []
     all_labels = []
 
+    t_loader = tqdm(test_loader, desc="Testing", ncols=100) if progress else test_loader
     with torch.no_grad():
-        for images, masks in tqdm(test_loader, desc="Testing", ncols=100):
+        for images, masks in t_loader:
             images = images.to(device, non_blocking=False)
             masks = masks.to(device, non_blocking=False)
 

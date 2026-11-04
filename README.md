@@ -1,10 +1,25 @@
 # RWKV-Flood: Lightweight Linear-Attention Networks for Flood Segmentation
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/doantrongthai/rwkv-flood/blob/main/screening_rwkv_architectures.ipynb)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![RWKV Attention](https://img.shields.io/badge/Architecture-Linear%20Attention%20%7C%20O(N)-blue.svg)](#)
 
-A high-performance benchmark suite featuring **RWKV (Receptance Weighted Key Value)** linear-attention segmentation architectures and real-time convolutional baselines for flood monitoring. Designed for linear $O(N)$ computational complexity and efficient evaluation at **256x256** resolution.
+A high-performance benchmark suite featuring **RWKV (Receptance Weighted Key Value)** linear-attention segmentation architectures and real-time convolutional baselines for flood monitoring. Designed for linear $O(N)$ computational complexity, absolute numerical stability, and efficient evaluation at **256x256** resolution.
+
+---
+
+## ⚡ Master Google Colab Screening Notebook
+
+Run the complete 21-architecture screening benchmark directly on Google Colab with hardware acceleration, automated NaN-divergence protection, and clean 1-line-per-epoch logging:
+
+👉 **[Open `screening_rwkv_architectures.ipynb` in Google Colab](https://colab.research.google.com/github/doantrongthai/rwkv-flood/blob/main/screening_rwkv_architectures.ipynb)**
+
+### Key Features of the Screening Pipeline:
+- **Numerical Stability Shield:** Strictly enforces $T \le 4096$ token bounds across all multi-resolution stages, clamps key projections $k \in [-15.0, 15.0]$, bounds time-decay parameters $w \in [-8.0, 3.0]$, and protects denominators with $10^{-7}\epsilon$.
+- **Automatic NaN Skip:** Any model encountering non-finite loss or gradients is immediately halted and skipped to the next architecture without crashing the execution pipeline.
+- **Clean 1-Line-Per-Epoch Logging (`--quiet`):** Prevents output truncation from thousands of progress bar updates.
+- **Paper-Ready Summary Table:** Automatically exports publication-ready LaTeX metrics and CSV leaderboards across datasets (`floodkaggle` and `aifloodsense`).
 
 ---
 

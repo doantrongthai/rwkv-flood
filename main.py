@@ -130,6 +130,7 @@ def main():
     parser.add_argument('--verify_repro', action='store_true', help="Run strict reproducibility test")
     parser.add_argument('--multiseed', action='store_true', help="Run multi-seed experiment for paper statistics")
     parser.add_argument('--seeds', type=int, nargs='+', default=[42, 123, 456, 789, 2024])
+    parser.add_argument('--quiet', action='store_true', help="Disable batch progress bars for clean 1-line-per-epoch Colab logs")
 
     # Cross-dataset evaluation parameters
     parser.add_argument('--weights', type=str, default=None, help="Checkpoint file path for cross-dataset evaluation")
@@ -179,7 +180,8 @@ def main():
         epochs=args.epochs, batch_size=args.batch_size, lr=args.lr,
         dataset=args.dataset, output_path=args.output_path,
         seed=args.seed, num_classes=args.num_classes, dataset_type=args.dataset,
-        aux_loss_name=args.aux_loss, aux_weight=args.aux_weight, pretrained=args.pretrained
+        aux_loss_name=args.aux_loss, aux_weight=args.aux_weight, pretrained=args.pretrained,
+        progress=not args.quiet
     )
     if isinstance(res, dict) and res.get("status") == "FAILED_NAN":
         print(f"\n[SUMMARY] Model '{args.model}' terminated early due to NaN detection. Status: FAILED_NAN")

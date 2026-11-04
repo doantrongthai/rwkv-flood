@@ -66,7 +66,7 @@ class SegRWKV_Block(nn.Module):
         xv = x_norm * self.mix_v + xx * (1 - self.mix_v)
         xr = x_norm * self.mix_r + xx * (1 - self.mix_r)
 
-        k = self.key(xk)
+        k = torch.clamp(self.key(xk), -15.0, 15.0)
         v = self.value(xv)
         r = torch.sigmoid(self.receptance(xr))
         wkv = bi_wkv_pure_pytorch(self.time_decay, self.time_first, k, v)
@@ -78,7 +78,8 @@ class SegRWKV_Block(nn.Module):
         xk2 = x_norm2 * self.mix_k + xx2 * (1 - self.mix_k)
         xr2 = x_norm2 * self.mix_r + xx2 * (1 - self.mix_r)
 
-        k2 = torch.square(torch.relu(self.ffn_k(xk2)))
+        k2 = torch.clamp(torch.relu(self.ffn_k(xk2)), 0.0, 10.0)
+        k2 = torch.square(k2)
         r2 = torch.sigmoid(self.ffn_r(xr2))
         x = x + r2 * self.ffn_v(k2)
         return x

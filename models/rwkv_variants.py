@@ -81,7 +81,7 @@ class StableRWKV_SpatialMix(nn.Module):
         sr = torch.sigmoid(r)
 
         # Numerical safety clamp on key exponent: guarantees e^k never exceeds float32 limits
-        k_clamped = torch.clamp(k, -20.0, 20.0)
+        k_clamped = torch.clamp(k, -15.0, 15.0)
 
         wkv = bi_wkv_pure_pytorch(self.time_decay, self.time_first, k_clamped, v)
         out = self.output(sr * wkv)
@@ -127,10 +127,12 @@ class SpatialRWKV2D(nn.Module):
     """
     Seamless 2D Feature Map Adapter for RWKV.
     Takes (B, C, H, W) -> runs Pre-LN WKV with Post-LN protection -> returns (B, C, H, W).
+    Guarantees sequence length T <= 4096 via adaptive spatial downsampling when needed.
     """
-    def __init__(self, dim: int, n_layer: int = 4, layer_id: int = 0):
+    def __init__(self, dim: int, n_layer: int = 4, layer_id: int = 0, max_tokens: int = 4096):
         super().__init__()
         self.dim = dim
+        self.max_tokens = max_tokens
         self.ln1 = nn.LayerNorm(dim)
         self.spatial_mix = StableRWKV_SpatialMix(dim, n_layer=n_layer, layer_id=layer_id)
         self.ln2 = nn.LayerNorm(dim)
@@ -139,16 +141,34 @@ class SpatialRWKV2D(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, C, H, W = x.shape
-        tokens = x.permute(0, 2, 3, 1).reshape(B, H * W, C)
+        orig_H, orig_W = H, W
+        needs_pool = (H * W > self.max_tokens)
+
+        if needs_pool:
+            max_side = int(math.isqrt(self.max_tokens))
+            scale = min(max_side / H, max_side / W)
+            target_H = max(1, int(round(H * scale)))
+            target_W = max(1, int(round(W * scale)))
+            x_proc = F.interpolate(x, size=(target_H, target_W), mode='bilinear', align_corners=False)
+            curr_H, curr_W = target_H, target_W
+        else:
+            x_proc = x
+            curr_H, curr_W = H, W
+
+        tokens = x_proc.permute(0, 2, 3, 1).reshape(B, curr_H * curr_W, C)
 
         # Pre-LN Spatial-Mix
-        tokens = tokens + self.spatial_mix(self.ln1(tokens), resolution=(H, W))
+        tokens = tokens + self.spatial_mix(self.ln1(tokens), resolution=(curr_H, curr_W))
         # Pre-LN Channel-Mix
-        tokens = tokens + self.channel_mix(self.ln2(tokens), resolution=(H, W))
+        tokens = tokens + self.channel_mix(self.ln2(tokens), resolution=(curr_H, curr_W))
         # Mandatory Post-LN to prevent gradient explosion to subsequent stages
         tokens = self.ln_out(tokens)
 
-        out = tokens.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+        out = tokens.reshape(B, curr_H, curr_W, C).permute(0, 3, 1, 2).contiguous()
+
+        if needs_pool:
+            out = F.interpolate(out, size=(orig_H, orig_W), mode='bilinear', align_corners=False)
+
         return out
 
 
